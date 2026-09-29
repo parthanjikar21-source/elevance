@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Booking Confirmed - {{ booking.booking_id }} | Cineverse{% endblock %}
+
+{% block content %}
+<div style="max-width: 850px; margin: 3rem auto 5rem; padding: 0 1.5rem;">
+  <!-- Success Confirmation Banner -->
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <div style="width: 72px; height: 72px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); border: 2px solid var(--accent-emerald); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; color: var(--accent-emerald);">
+      <i class="fa-solid fa-check" style="font-size: 2.2rem;"></i>
+    </div>
+    <h1 style="font-size: 2.2rem; color: #FFF; margin-bottom: 0.5rem;">Booking Confirmed!</h1>
+    <p style="color: var(--text-secondary); font-size: 1rem;">
+      Your e-ticket has been generated and sent to <strong>{{ booking.user.email }}</strong> via email.
+    </p>
+  </div>
+
+  <!-- Digital Boarding Pass Ticket Card -->
+  <div class="glass-card" style="padding: 0; overflow: hidden; border-color: var(--border-glow); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); margin-bottom: 2rem;">
+    <!-- Ticket Top Header -->
+    <div style="background: linear-gradient(135deg, #1E1B4B 0%, #311042 100%); padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass);">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800; color: #FFF;">
+          <i class="fa-solid fa-film" style="color: var(--primary);"></i> CINEVERSE CINEMAS
+        </div>
+        <div style="font-size: 0.75rem; color: #CBD5E1; letter-spacing: 0.05em; text-transform: uppercase;">Official E-Ticket & Boarding Pass</div>
+      </div>
+
+      <div style="text-align: right;">
+        <span style="background: rgba(16, 185, 129, 0.25); border: 1px solid var(--accent-emerald); color: #34D399; font-weight: 800; font-size: 0.8rem; padding: 0.25rem 0.75rem; border-radius: 9999px;">
+          {{ booking.get_status_display|upper }}
+        </span>
+        <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 0.3rem;">
+          ID: <strong style="color: #FFF;">{{ booking.booking_id }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket Body -->
+    <div style="padding: 2rem; display: grid; grid-template-columns: 1fr 200px; gap: 2rem; align-items: center;" class="ticket-body-grid">
+      <!-- Left: Movie & Showtime Details -->
+      <div>
+        <h2 style="font-size: 1.8rem; color: #FFF; margin-bottom: 0.35rem;">
+          {{ booking.show.movie.title }}
+        </h2>
+        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+          {{ booking.show.movie.age_certification }} • {{ booking.show.movie.duration_formatted }} • {{ booking.show.screen.get_screen_type_display }}
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; font-size: 0.9rem;">
+          <div>
+            <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Cinema & Theater</div>
+            <strong style="color: #FFF; font-size: 1rem;">{{ booking.show.screen.theater.name }}</strong>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ booking.show.screen.name }}</div>
+          </div>
+
+          <div>
+            <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Date & Showtime</div>
+            <strong style="color: #FFF; font-size: 1rem;">{{ booking.show.show_date|date:"l, d M Y" }}</strong>
+            <div style="font-size: 0.95rem; color: var(--accent-amber); font-weight: 700;">{{ booking.show.start_time|time:"h:i A" }}</div>
+          </div>
+
+          <div>
+            <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Seats Assigned</div>
+            <strong style="color: var(--accent-emerald); font-size: 1.25rem; font-family: var(--font-heading);">{{ booking.seats_display }}</strong>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ booking.seats_count }} Seat{{ booking.seats_count|pluralize }}</div>
+          </div>
+
+          <div>
+            <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Total Paid</div>
+            <strong style="color: #FFF; font-size: 1.25rem; font-family: var(--font-heading);">₹{{ booking.final_amount }}</strong>
+            <div style="font-size: 0.8rem; color: var(--accent-emerald);">Online Verified</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: QR Code -->
+      <div style="text-align: center; border-left: 1px dashed var(--border-glass); padding-left: 1.5rem;">
+        <div style="background: #FFF; padding: 0.75rem; border-radius: var(--radius-sm); display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.4); margin-bottom: 0.75rem;">
+          {% if booking.qr_code_image %}
+            <img src="{{ booking.qr_code_image.url }}" alt="Verification QR Code" style="width: 140px; height: 140px; display: block;">
+          {% else %}
+            <div style="width: 140px; height: 140px; background: #000; display: flex; align-items: center; justify-content: center; color: #FFF; font-size: 0.75rem;">
+              [QR Code]
+            </div>
+          {% endif %}
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">
+          Scan at auditorium scanner for entrance
+        </div>
+      </div>
+    </div>
+
+    <!-- Ticket Footer Bar -->
+    <div style="background: rgba(0,0,0,0.3); border-top: 1px solid var(--border-glass); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div style="font-size: 0.8rem; color: var(--text-muted);">
+        Verification Token: <code style="color: #A5B4FC;">{{ booking.verification_token|stringformat:"s"|slice:":18" }}...</code>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem;">
+        <a href="{% url 'bookings:download_ticket_pdf' booking_id=booking.booking_id %}" class="btn btn-primary" id="download-ticket-btn">
+          <i class="fa-solid fa-file-pdf"></i> Download PDF Ticket
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions Row -->
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <a href="{% url 'movies:movie_list' %}" class="btn btn-outline">
+      <i class="fa-solid fa-house"></i> Back to Movies
+    </a>
+
+    {% if user_has_watched %}
+      <a href="{% url 'movies:movie_detail' slug=booking.show.movie.slug %}#review-form" class="btn btn-accent">
+        <i class="fa-solid fa-star"></i> Leave Verified Review
+      </a>
+    {% else %}
+      <span style="font-size: 0.85rem; color: var(--text-muted);">
+        <i class="fa-solid fa-info-circle"></i> Verified review badge will unlock after showtime.
+      </span>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

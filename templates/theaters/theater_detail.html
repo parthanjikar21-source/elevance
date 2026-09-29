@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}{{ theater.name }} - Showtimes & Screens | Cineverse{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 2.5rem auto 5rem; padding: 0 2rem;">
+  <!-- Theater Header Card -->
+  <div class="glass-card" style="margin-bottom: 2rem; border-color: var(--border-glow);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+      <div>
+        <div style="color: var(--accent-pink); font-size: 0.85rem; font-weight: 700; text-transform: uppercase;">
+          <i class="fa-solid fa-location-dot"></i> {{ theater.city.name }}
+        </div>
+        <h1 style="font-size: 2.2rem; color: #FFF; margin-bottom: 0.25rem;">{{ theater.name }}</h1>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">
+          {{ theater.address }} {% if theater.landmark %}• {{ theater.landmark }}{% endif %}
+        </p>
+      </div>
+
+      <div>
+        <a href="{% url 'theaters:theater_list' %}" class="btn btn-outline" style="font-size: 0.85rem;">
+          <i class="fa-solid fa-arrow-left"></i> All Cinemas
+        </a>
+      </div>
+    </div>
+
+    <!-- Amenities Row -->
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      {% for amenity in theater.amenities_list %}
+        <span style="font-size: 0.75rem; background: rgba(255,255,255,0.06); padding: 0.25rem 0.6rem; border-radius: var(--radius-full); color: var(--text-secondary);">
+          <i class="fa-solid fa-check" style="color: var(--accent-emerald);"></i> {{ amenity }}
+        </span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Shows Schedule -->
+  <h2 style="font-size: 1.5rem; color: #FFF; margin-bottom: 1.5rem;">Current & Upcoming Showtimes</h2>
+  {% if shows %}
+    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+      {% for show in shows %}
+        <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1.25rem;">
+          <div style="display: flex; gap: 1.25rem; align-items: center;">
+            <div style="width: 50px; height: 70px; border-radius: 4px; overflow: hidden; background: #1E293B; flex-shrink: 0;">
+              {% if show.movie.poster_image %}
+                <img src="{{ show.movie.poster_image.url }}" alt="{{ show.movie.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+              {% endif %}
+            </div>
+            <div>
+              <h3 style="font-size: 1.15rem; color: #FFF; margin-bottom: 0.2rem;">
+                <a href="{% url 'movies:movie_detail' slug=show.movie.slug %}" style="color: #FFF;">{{ show.movie.title }}</a>
+              </h3>
+              <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
+                <span>{{ show.screen.name }}</span>
+                <span>•</span>
+                <span class="format-pill" style="font-size: 0.65rem;">{{ show.screen.get_screen_type_display }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 2rem;">
+            <div style="text-align: right;">
+              <div style="font-size: 0.8rem; color: var(--text-muted);">{{ show.show_date|date:"D, d M" }}</div>
+              <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-amber);">{{ show.start_time|time:"h:i A" }}</div>
+            </div>
+
+            <div style="text-align: right;">
+              <div style="font-size: 0.8rem; color: var(--text-muted);">From</div>
+              <div style="font-size: 1.15rem; font-weight: 800; color: var(--accent-emerald);">₹{{ show.base_price }}</div>
+            </div>
+
+            <div>
+              <a href="{% url 'bookings:seat_selection' show_id=show.id %}" class="btn btn-primary" style="padding: 0.5rem 1.25rem; font-size: 0.85rem;">
+                Pick Seats
+              </a>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="glass-card" style="text-align: center; padding: 3rem;">
+      <p style="color: var(--text-secondary);">No active show schedules available for this theater at the moment.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

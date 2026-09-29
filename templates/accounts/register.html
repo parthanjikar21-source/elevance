@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create Account | Cineverse Cinemas{% endblock %}
+
+{% block content %}
+<div style="max-width: 520px; margin: 3rem auto 6rem; padding: 0 1.5rem;">
+  <div class="glass-card" style="padding: 2.5rem; border-color: var(--border-glow); box-shadow: var(--shadow-md);">
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <div class="brand-icon" style="margin: 0 auto 1rem; width: 44px; height: 44px;">
+        <i class="fa-solid fa-user-plus" style="color: #FFF; font-size: 1.2rem;"></i>
+      </div>
+      <h1 style="font-size: 1.8rem; color: #FFF; margin-bottom: 0.25rem;">Join Cineverse</h1>
+      <p style="color: var(--text-secondary); font-size: 0.9rem;">Unlock smart 2-minute seat reservations & verified reviews</p>
+    </div>
+
+    <form method="POST" action="">
+      {% csrf_token %}
+
+      {% for field in form %}
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.4rem;">
+            {{ field.label }}: {% if field.field.required %}<span style="color: var(--accent-rose);">*</span>{% endif %}
+          </label>
+          {{ field }}
+          {% if field.help_text %}
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">{{ field.help_text }}</div>
+          {% endif %}
+          {% if field.errors %}
+            <div style="font-size: 0.8rem; color: var(--accent-rose); margin-top: 0.25rem;">{{ field.errors.0 }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 1rem; margin-top: 1rem; margin-bottom: 1.25rem;" id="register-submit-btn">
+        <i class="fa-solid fa-user-check"></i> Register Account
+      </button>
+
+      <div style="text-align: center; font-size: 0.85rem; color: var(--text-secondary);">
+        Already have an account? <a href="{% url 'accounts:login' %}" style="color: var(--primary); font-weight: 700;">Sign In</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

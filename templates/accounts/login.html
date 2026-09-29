@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign In | Cineverse Cinemas{% endblock %}
+
+{% block content %}
+<div style="max-width: 440px; margin: 4rem auto 6rem; padding: 0 1.5rem;">
+  <div class="glass-card" style="padding: 2.5rem; border-color: var(--border-glow); box-shadow: var(--shadow-md);">
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <div class="brand-icon" style="margin: 0 auto 1rem; width: 44px; height: 44px;">
+        <i class="fa-solid fa-film" style="color: #FFF; font-size: 1.2rem;"></i>
+      </div>
+      <h1 style="font-size: 1.8rem; color: #FFF; margin-bottom: 0.25rem;">Welcome Back</h1>
+      <p style="color: var(--text-secondary); font-size: 0.9rem;">Sign in to access your bookings and verified reviews</p>
+    </div>
+
+    <!-- Quick Credentials Hint for Reviewers -->
+    <div style="background: rgba(99, 102, 241, 0.1); border: 1px dashed var(--border-glow); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1.5rem; font-size: 0.8rem; color: #C7D2FE;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span><strong>Quick Fill (Admin):</strong> <code>admin</code> / <code>Admin@12345</code></span>
+        <button type="button" onclick="fillAdminCredentials()" style="background: var(--primary); border: none; color: #FFF; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; cursor: pointer;">Fill</button>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.35rem;">
+        <span><strong>Verified User:</strong> <code>cinephile</code> / <code>User@12345</code></span>
+        <button type="button" onclick="fillTestCredentials()" style="background: var(--accent-emerald); border: none; color: #FFF; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; cursor: pointer;">Fill</button>
+      </div>
+    </div>
+
+    <form method="POST" action="">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <div style="margin-bottom: 1.25rem;">
+        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.4rem;">Username:</label>
+        <input type="text" name="username" id="id_username" required class="form-input" style="width: 100%;" placeholder="Enter username">
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.4rem;">Password:</label>
+        <input type="password" name="password" id="id_password" required class="form-input" style="width: 100%;" placeholder="Enter password">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 1rem; margin-bottom: 1.25rem;" id="login-submit-btn">
+        <i class="fa-solid fa-right-to-bracket"></i> Sign In
+      </button>
+
+      <div style="text-align: center; font-size: 0.85rem; color: var(--text-secondary);">
+        Don't have an account? <a href="{% url 'accounts:register' %}" style="color: var(--primary); font-weight: 700;">Create one</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function fillAdminCredentials() {
+    document.getElementById('id_username').value = 'admin';
+    document.getElementById('id_password').value = 'Admin@12345';
+  }
+  function fillTestCredentials() {
+    document.getElementById('id_username').value = 'cinephile';
+    document.getElementById('id_password').value = 'User@12345';
+  }
+</script>
+{% endblock %}

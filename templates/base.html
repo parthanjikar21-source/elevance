@@ -1,0 +1,306 @@
+{% load static humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Cineverse Cinemas | Premium Movie Discovery & Smart Ticketing{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Experience world-class cinema booking with live smart seat availability, instant verified tickets, secure payments, and verified viewer movie ratings.{% endblock %}">
+  
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Chart.js CDN for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Cineverse Core CSS -->
+  <link rel="stylesheet" href="{% static 'css/cineverse.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- Top Announcement Bar / Admin Quick Access Pill -->
+  <div style="background: linear-gradient(90deg, #1E1B4B, #311042); padding: 0.35rem 1.5rem; font-size: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center;">
+    <div style="display: flex; align-items: center; gap: 0.5rem; color: #C7D2FE;">
+      <i class="fa-solid fa-sparkles text-amber-400"></i>
+      <span>Live Seat Reservation with 2-Minute Lock • Razorpay / Stripe Payments • Verified Viewer Reviews</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <a href="#" onclick="openCredentialsModal(); return false;" style="color: #FCD34D; font-weight: 600; display: flex; align-items: center; gap: 0.35rem;">
+        <i class="fa-solid fa-key"></i> Admin & Test Credentials
+      </a>
+      {% if user.is_staff %}
+        <a href="{% url 'analytics:dashboard' %}" style="background: rgba(99, 102, 241, 0.3); border: 1px solid #818CF8; color: #FFF; padding: 0.15rem 0.6rem; border-radius: 9999px; font-weight: 700; font-size: 0.75rem;">
+          <i class="fa-solid fa-chart-line"></i> Staff Dashboard
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Header Navigation -->
+  <header class="cinema-navbar">
+    <div class="nav-container">
+      <!-- Brand Logo -->
+      <a href="{% url 'movies:movie_list' %}" class="nav-brand" id="brand-logo-link">
+        <div class="brand-icon">
+          <i class="fa-solid fa-film" style="color: #FFF; font-size: 1.1rem;"></i>
+        </div>
+        <span>CINEVERSE</span>
+      </a>
+
+      <!-- City Selector Dropdown Form -->
+      <form action="{% url 'accounts:set_city' %}" method="POST" id="city-selector-form" style="display: flex; align-items: center;">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <div class="city-selector-btn" onclick="document.getElementById('city-select-dropdown').focus()">
+          <i class="fa-solid fa-location-dot" style="color: var(--accent-rose);"></i>
+          <select name="city_id" id="city-select-dropdown" onchange="this.form.submit()" style="background: transparent; border: none; color: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; outline: none;">
+            {% for city in global_cities %}
+              <option value="{{ city.id }}" style="background: #0E1626; color: #FFF;" {% if current_city and current_city.id == city.id %}selected{% endif %}>
+                {{ city.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </form>
+
+      <!-- Search Bar -->
+      <form action="{% url 'movies:movie_list' %}" method="GET" style="flex-grow: 1; max-width: 380px; position: relative;">
+        <input type="text" name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search movies, actors, directors..." class="form-input" style="width: 100%; padding-left: 2.4rem; padding-right: 1rem; border-radius: var(--radius-full); font-size: 0.85rem;" id="nav-search-input">
+        <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem;"></i>
+      </form>
+
+      <!-- Nav Links -->
+      <nav>
+        <ul class="nav-links">
+          <li>
+            <a href="{% url 'movies:movie_list' %}" class="nav-link {% if request.resolver_match.url_name == 'movie_list' %}active{% endif %}" id="nav-movies-link">
+              <i class="fa-solid fa-ticket"></i> Movies
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'theaters:theater_list' %}" class="nav-link {% if request.resolver_match.url_name == 'theater_list' %}active{% endif %}" id="nav-cinemas-link">
+              <i class="fa-solid fa-building"></i> Cinemas
+            </a>
+          </li>
+          {% if user.is_staff %}
+          <li>
+            <a href="{% url 'analytics:dashboard' %}" class="nav-link {% if 'analytics' in request.path %}active{% endif %}" id="nav-analytics-link" style="color: #A5B4FC;">
+              <i class="fa-solid fa-chart-pie"></i> Business Insights
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </nav>
+
+      <!-- Account Actions -->
+      <div class="nav-actions">
+        {% if user.is_authenticated %}
+          <div style="display: flex; align-items: center; gap: 0.85rem;">
+            <a href="{% url 'accounts:profile' %}" class="btn btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; border-radius: var(--radius-full);" id="nav-profile-btn">
+              <i class="fa-solid fa-circle-user" style="color: var(--primary);"></i>
+              <span>{{ user.first_name|default:user.username }}</span>
+              {% if user.loyalty_points %}
+                <span style="background: var(--accent-amber); color: #000; font-size: 0.7rem; font-weight: 800; padding: 0.1rem 0.4rem; border-radius: 9999px;">{{ user.loyalty_points }} pts</span>
+              {% endif %}
+            </a>
+            <a href="{% url 'accounts:logout' %}" class="btn btn-outline" style="padding: 0.45rem 0.8rem; font-size: 0.85rem; border-radius: var(--radius-full);" title="Logout" id="nav-logout-btn">
+              <i class="fa-solid fa-right-from-bracket"></i>
+            </a>
+          </div>
+        {% else %}
+          <a href="{% url 'accounts:login' %}" class="btn btn-outline" style="padding: 0.45rem 1.1rem; font-size: 0.85rem;" id="nav-login-btn">
+            Sign In
+          </a>
+          <a href="{% url 'accounts:register' %}" class="btn btn-primary" style="padding: 0.45rem 1.1rem; font-size: 0.85rem;" id="nav-register-btn">
+            Register
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Global Flash Messages -->
+  {% if messages %}
+    <div style="max-width: 1400px; margin: 1rem auto 0; padding: 0 2rem; width: 100%;">
+      {% for message in messages %}
+        <div style="background: {% if message.tags == 'error' %}rgba(244, 63, 94, 0.2){% elif message.tags == 'success' %}rgba(16, 185, 129, 0.2){% elif message.tags == 'warning' %}rgba(245, 158, 11, 0.2){% else %}rgba(99, 102, 241, 0.2){% endif %}; border: 1px solid {% if message.tags == 'error' %}var(--accent-rose){% elif message.tags == 'success' %}var(--accent-emerald){% elif message.tags == 'warning' %}var(--accent-amber){% else %}var(--primary){% endif %}; border-radius: var(--radius-sm); padding: 0.75rem 1.25rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem; color: #FFF;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            {% if message.tags == 'error' %}<i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-rose);"></i>
+            {% elif message.tags == 'success' %}<i class="fa-solid fa-circle-check" style="color: var(--accent-emerald);"></i>
+            {% elif message.tags == 'warning' %}<i class="fa-solid fa-clock" style="color: var(--accent-amber);"></i>
+            {% else %}<i class="fa-solid fa-circle-info" style="color: var(--primary);"></i>{% endif %}
+            <span>{{ message }}</span>
+          </div>
+          <button onclick="this.parentElement.remove()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Main Content Block -->
+  <main style="flex-grow: 1;">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Trailer Lightbox Modal -->
+  <div class="cinema-modal-backdrop" id="trailer-modal" onclick="closeTrailerModal(event)">
+    <div class="cinema-modal" style="max-width: 900px;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-glass);">
+        <h3 id="trailer-modal-title" style="font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i class="fa-brands fa-youtube" style="color: #FF0000;"></i> Official Trailer
+        </h3>
+        <button onclick="closeTrailerModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.25rem;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="video-responsive-wrap">
+        <iframe id="trailer-iframe" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin & Test Credentials Modal -->
+  <div class="cinema-modal-backdrop" id="credentials-modal" onclick="closeCredentialsModal(event)">
+    <div class="cinema-modal" style="max-width: 600px;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-glass); background: rgba(99, 102, 241, 0.1);">
+        <h3 style="font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; color: #FFF;">
+          <i class="fa-solid fa-shield-halved" style="color: var(--accent-amber);"></i> Project Credentials & Architecture
+        </h3>
+        <button onclick="closeCredentialsModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.25rem;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="padding: 1.5rem; font-size: 0.9rem;">
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1rem;">
+          <h4 style="color: var(--accent-amber); font-size: 0.95rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-user-gear"></i> Administrator Credentials</h4>
+          <p style="margin-bottom: 0.25rem;"><strong>Username:</strong> <code style="background: #1E293B; padding: 0.15rem 0.4rem; border-radius: 4px; color: #A5B4FC;">admin</code></p>
+          <p style="margin-bottom: 0.25rem;"><strong>Password:</strong> <code style="background: #1E293B; padding: 0.15rem 0.4rem; border-radius: 4px; color: #A5B4FC;">Admin@12345</code></p>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">Full access to Custom Admin Dashboard, Django Admin panel, and Ticket Check-in Scanner.</p>
+        </div>
+
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1rem;">
+          <h4 style="color: var(--accent-emerald); font-size: 0.95rem; margin-bottom: 0.5rem;"><i class="fa-solid fa-user-check"></i> Verified Viewer Test Account</h4>
+          <p style="margin-bottom: 0.25rem;"><strong>Username:</strong> <code style="background: #1E293B; padding: 0.15rem 0.4rem; border-radius: 4px; color: #A5B4FC;">cinephile</code></p>
+          <p style="margin-bottom: 0.25rem;"><strong>Password:</strong> <code style="background: #1E293B; padding: 0.15rem 0.4rem; border-radius: 4px; color: #A5B4FC;">User@12345</code></p>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">Has past confirmed watched bookings to demonstrate the <strong>Verified Viewer Badge</strong> and review editing.</p>
+        </div>
+
+        <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+          <p><strong>Database Optimizations for 100k+ Bookings:</strong></p>
+          <ul style="padding-left: 1.25rem; margin-top: 0.25rem;">
+            <li>B-Tree composite indexes on <code>(show_date, start_time)</code>, <code>(status, expires_at)</code>, <code>(user_id, status)</code>.</li>
+            <li>In-database SQL aggregations (<code>Sum()</code>, <code>Count()</code>, <code>TruncDate()</code>, <code>ExtractHour()</code>).</li>
+            <li>Strict <code>select_for_update()</code> concurrency locks preventing double-booking during concurrent checkouts.</li>
+          </ul>
+        </div>
+      </div>
+      <div style="padding: 1rem 1.5rem; background: rgba(0,0,0,0.2); border-top: 1px solid var(--border-glass); text-align: right;">
+        <button class="btn btn-secondary" onclick="closeCredentialsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="cinema-footer">
+    <div class="footer-container">
+      <div style="max-width: 320px;">
+        <div class="nav-brand" style="margin-bottom: 1rem;">
+          <div class="brand-icon">
+            <i class="fa-solid fa-film" style="color: #FFF; font-size: 1rem;"></i>
+          </div>
+          <span>CINEVERSE</span>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6;">
+          India's most advanced smart cinema experience. Featuring real-time seat lock, verified viewer reviews, secure payments, and dynamic ticketing.
+        </p>
+      </div>
+
+      <div>
+        <h4 style="font-size: 0.95rem; margin-bottom: 1rem; color: #FFF;">Explore</h4>
+        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem;">
+          <li><a href="{% url 'movies:movie_list' %}?status=NOW_SHOWING">Now Showing Movies</a></li>
+          <li><a href="{% url 'movies:movie_list' %}?status=COMING_SOON">Upcoming Releases</a></li>
+          <li><a href="{% url 'theaters:theater_list' %}">Cinemas & Multiplexes</a></li>
+          <li><a href="{% url 'movies:movie_list' %}?sort=rating">Top Rated Cinema</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 style="font-size: 0.95rem; margin-bottom: 1rem; color: #FFF;">Administration</h4>
+        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem;">
+          <li><a href="{% url 'analytics:dashboard' %}">Admin Business Intelligence</a></li>
+          <li><a href="/admin/">Django Admin Portal</a></li>
+          <li><a href="#" onclick="openCredentialsModal(); return false;">Credentials & Benchmarks</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 style="font-size: 0.95rem; margin-bottom: 1rem; color: #FFF;">Security & Payments</h4>
+        <div style="display: flex; gap: 0.75rem; font-size: 1.6rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+          <i class="fa-brands fa-cc-visa" title="Visa"></i>
+          <i class="fa-brands fa-cc-mastercard" title="Mastercard"></i>
+          <i class="fa-brands fa-stripe" title="Stripe"></i>
+          <i class="fa-solid fa-shield-halved" title="256-Bit SSL Encryption" style="color: var(--accent-emerald);"></i>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-muted);">
+          Protected by 256-bit server-side HMAC signature verification and atomic database locks.
+        </p>
+      </div>
+    </div>
+    
+    <div style="max-width: 1400px; margin: 2rem auto 0; padding-top: 1.5rem; border-top: 1px solid var(--border-glass); text-align: center; font-size: 0.8rem; color: var(--text-muted);">
+      © 2026 Cineverse Entertainment Platforms. All Rights Reserved. • Designed for High-Performance Scalability
+    </div>
+  </footer>
+
+  <!-- Global Modal JS Functions -->
+  <script>
+    function openTrailerModal(embedUrl, title) {
+      const modal = document.getElementById('trailer-modal');
+      const iframe = document.getElementById('trailer-iframe');
+      const titleElem = document.getElementById('trailer-modal-title');
+      
+      if (embedUrl) {
+        // Autoplay trailer on modal open
+        const urlWithAutoplay = embedUrl.includes('?') ? `${embedUrl}&autoplay=1` : `${embedUrl}?autoplay=1`;
+        iframe.src = urlWithAutoplay;
+      }
+      if (title && titleElem) {
+        titleElem.innerHTML = `<i class="fa-brands fa-youtube" style="color: #FF0000;"></i> ${title} - Official Trailer`;
+      }
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeTrailerModal() {
+      const modal = document.getElementById('trailer-modal');
+      const iframe = document.getElementById('trailer-iframe');
+      iframe.src = '';
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function openCredentialsModal() {
+      document.getElementById('credentials-modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeCredentialsModal() {
+      document.getElementById('credentials-modal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Close modals on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeTrailerModal();
+        closeCredentialsModal();
+      }
+    });
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

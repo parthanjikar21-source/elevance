@@ -1,0 +1,497 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}{{ movie.title }} ({{ movie.release_date.year }}) - Tickets, Trailers, Showtimes | Cineverse{% endblock %}
+{% block meta_description %}Book tickets for {{ movie.title }}. Directed with {{ movie.duration_formatted }} runtime, {{ movie.age_certification }} rating, YouTube trailer, verified reviews, and IMAX showtimes.{% endblock %}
+
+{% block content %}
+<!-- Movie Cinematic Header / Hero Banner -->
+<section style="position: relative; background: #0B0F19; overflow: hidden; border-bottom: 1px solid var(--border-glass);">
+  <!-- Backdrop Image with Gradient Overlay -->
+  <div style="position: absolute; inset: 0; z-index: 1; opacity: 0.35;">
+    {% if movie.banner_image %}
+      <img src="{{ movie.banner_image.url }}" alt="{{ movie.title }} Backdrop" style="width: 100%; height: 100%; object-fit: cover; filter: blur(4px);">
+    {% elif movie.poster_image %}
+      <img src="{{ movie.poster_image.url }}" alt="{{ movie.title }} Backdrop" style="width: 100%; height: 100%; object-fit: cover; filter: blur(12px);">
+    {% endif %}
+    <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,15,25,0.7) 0%, rgba(11,15,25,0.95) 75%, #0B0F19 100%);"></div>
+  </div>
+
+  <div style="max-width: 1400px; margin: 0 auto; padding: 3.5rem 2rem; position: relative; z-index: 10;">
+    <div style="display: flex; gap: 3rem; flex-wrap: wrap; align-items: flex-start;">
+      <!-- Poster Column -->
+      <div style="width: 280px; flex-shrink: 0;">
+        <div style="border-radius: var(--radius-md); overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.8); border: 1px solid var(--border-glass); aspect-ratio: 2/3; background: #131D31;">
+          {% if movie.poster_image %}
+            <img src="{{ movie.poster_image.url }}" alt="{{ movie.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+          {% else %}
+            <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+              <i class="fa-solid fa-film" style="font-size: 3rem;"></i>
+            </div>
+          {% endif %}
+        </div>
+
+        {% if movie.youtube_embed_url %}
+          <button type="button" class="btn btn-primary" style="width: 100%; margin-top: 1.25rem; padding: 0.75rem;" onclick="openTrailerModal('{{ movie.youtube_embed_url }}', '{{ movie.title|escapejs }}')" id="hero-trailer-btn">
+            <i class="fa-brands fa-youtube" style="font-size: 1.2rem;"></i> Watch Official Trailer
+          </button>
+        {% endif %}
+      </div>
+
+      <!-- Main Info Column -->
+      <div style="flex-grow: 1; max-width: 850px;">
+        <!-- Age & Status Tags -->
+        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem;">
+          <span style="background: rgba(255,255,255,0.1); border: 1px solid var(--border-glass); padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 700;">
+            {{ movie.age_certification }}
+          </span>
+          <span style="background: rgba(99, 102, 241, 0.2); border: 1px solid var(--border-glow); color: #A5B4FC; padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 700;">
+            {{ movie.get_status_display }}
+          </span>
+          {% if movie.is_trending %}
+            <span style="background: rgba(236, 72, 153, 0.2); border: 1px solid rgba(236, 72, 153, 0.4); color: #F472B6; padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 700;">
+              <i class="fa-solid fa-fire"></i> Trending Now
+            </span>
+          {% endif %}
+        </div>
+
+        <h1 style="font-size: 2.8rem; line-height: 1.15; margin-bottom: 0.75rem; color: #FFF;">
+          {{ movie.title }}
+        </h1>
+
+        <!-- Rating & Meta Row -->
+        <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          <!-- Rating Box -->
+          <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.4rem 0.9rem; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 0.6rem;">
+            <i class="fa-solid fa-star" style="color: var(--accent-amber); font-size: 1.2rem;"></i>
+            <div>
+              <div style="font-weight: 800; font-size: 1.15rem; color: #FFF; line-height: 1;">
+                {{ movie.average_rating|default:"New" }} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">/ 5</span>
+              </div>
+              <div style="font-size: 0.7rem; color: var(--text-secondary);">
+                {{ movie.total_reviews }} Verified Rating{{ movie.total_reviews|pluralize }}
+              </div>
+            </div>
+          </div>
+
+          <div style="color: var(--text-secondary); font-size: 0.95rem; display: flex; align-items: center; gap: 0.6rem;">
+            <span><i class="fa-regular fa-clock" style="color: var(--primary);"></i> {{ movie.duration_formatted }}</span>
+            <span>•</span>
+            <span><i class="fa-regular fa-calendar" style="color: var(--primary);"></i> {{ movie.release_date|date:"F d, Y" }}</span>
+          </div>
+        </div>
+
+        <!-- Genres & Languages -->
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          {% for g in movie.genres.all %}
+            <span class="genre-tag" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: #C7D2FE;">
+              {{ g.name }}
+            </span>
+          {% endfor %}
+          {% for lang in movie.languages.all %}
+            <span class="genre-tag" style="background: rgba(255, 255, 255, 0.05);">
+              <i class="fa-solid fa-language" style="color: var(--text-muted);"></i> {{ lang.name }}
+            </span>
+          {% endfor %}
+        </div>
+
+        <!-- Synopsis -->
+        <div style="margin-bottom: 2rem;">
+          <h3 style="font-size: 1.1rem; color: #FFF; margin-bottom: 0.5rem;">Synopsis</h3>
+          <p style="color: var(--text-secondary); line-height: 1.7; font-size: 1rem;">
+            {{ movie.description }}
+          </p>
+        </div>
+
+        <!-- Quick Jump to Showtimes CTA -->
+        <div>
+          <a href="#showtimes-section" class="btn btn-accent" style="padding: 0.75rem 1.75rem; font-size: 1rem;" id="jump-to-showtimes-cta">
+            <i class="fa-solid fa-ticket"></i> Book Tickets Now
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Additional Posters Gallery Lightbox (if any) -->
+{% if movie.additional_posters.all %}
+<section style="max-width: 1400px; margin: 0 auto; padding: 2rem 2rem 0;">
+  <h3 style="font-size: 1.2rem; margin-bottom: 1rem; color: #FFF;"><i class="fa-regular fa-images"></i> Official Posters & Stills Gallery</h3>
+  <div style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem;">
+    {% for poster in movie.additional_posters.all %}
+      <div style="width: 180px; flex-shrink: 0; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-glass); aspect-ratio: 2/3;">
+        <img src="{{ poster.image.url }}" alt="{{ poster.caption|default:movie.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- Cast and Crew Slider -->
+{% if movie.movie_cast_entries.all %}
+<section style="max-width: 1400px; margin: 0 auto; padding: 2.5rem 2rem 1rem;">
+  <h3 style="font-size: 1.3rem; margin-bottom: 1.25rem; color: #FFF;"><i class="fa-solid fa-masks-theater"></i> Cast & Crew</h3>
+  <div style="display: flex; gap: 1.25rem; overflow-x: auto; padding-bottom: 1rem;">
+    {% for cast_entry in movie.movie_cast_entries.all %}
+      <div class="glass-card" style="width: 150px; flex-shrink: 0; padding: 0.75rem; text-align: center; border-radius: var(--radius-sm);">
+        <div style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; margin: 0 auto 0.75rem; border: 2px solid var(--border-glow); background: #1E293B;">
+          {% if cast_entry.cast_member.photo %}
+            <img src="{{ cast_entry.cast_member.photo.url }}" alt="{{ cast_entry.cast_member.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+          {% else %}
+            <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+              <i class="fa-solid fa-user" style="font-size: 1.8rem;"></i>
+            </div>
+          {% endif %}
+        </div>
+        <div style="font-weight: 700; font-size: 0.85rem; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          {{ cast_entry.cast_member.name }}
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          {{ cast_entry.character_name|default:cast_entry.cast_member.get_role_display }}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- Showtimes Booking Matrix -->
+<section id="showtimes-section" style="max-width: 1400px; margin: 0 auto; padding: 2.5rem 2rem;">
+  <div style="background: var(--bg-surface); border: 1px solid var(--border-glass); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-md);">
+    
+    <!-- Header with Date Selector Tabs -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 1.5rem;">
+      <div>
+        <h2 style="font-size: 1.6rem; color: #FFF; margin-bottom: 0.25rem;">
+          <i class="fa-solid fa-ticket-simple" style="color: var(--primary);"></i> Available Theaters & Showtimes
+        </h2>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">
+          Showing schedules in <strong>{{ current_city.name }}</strong>. Select your preferred theater and time to pick seats.
+        </p>
+      </div>
+
+      <!-- Date Tabs -->
+      <div style="display: flex; gap: 0.5rem; overflow-x: auto;">
+        {% for d in date_tabs %}
+          <a href="?date={{ d|date:'Y-m-d' }}#showtimes-section" 
+             class="btn {% if selected_date == d %}btn-primary{% else %}btn-outline{% endif %}" 
+             style="padding: 0.5rem 1rem; border-radius: var(--radius-sm); text-align: center; min-width: 80px;"
+             id="date-tab-{{ d|date:'Y-m-d' }}">
+            <div style="font-size: 0.75rem; text-transform: uppercase;">{{ d|date:"D" }}</div>
+            <div style="font-size: 1.1rem; font-weight: 800;">{{ d|date:"d M" }}</div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Theaters and Showtimes List -->
+    {% if theater_shows %}
+      <div style="display: flex; flex-direction: column; gap: 1.75rem;">
+        {% for theater, shows in theater_shows.items %}
+          <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 1.5rem;">
+            <!-- Theater Info -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+              <div>
+                <h3 style="font-size: 1.25rem; color: #FFF; margin-bottom: 0.25rem;">
+                  <a href="{% url 'theaters:theater_detail' slug=theater.slug %}" style="color: #FFF;">
+                    {{ theater.name }}
+                  </a>
+                </h3>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                  <i class="fa-solid fa-location-dot" style="color: var(--accent-rose);"></i> {{ theater.address }}
+                  {% if theater.landmark %} • {{ theater.landmark }}{% endif %}
+                </p>
+              </div>
+
+              <!-- Amenities Pills -->
+              <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                {% for amenity in theater.amenities_list|slice:":3" %}
+                  <span style="font-size: 0.7rem; background: rgba(255,255,255,0.06); padding: 0.2rem 0.5rem; border-radius: var(--radius-full); color: var(--text-secondary);">
+                    <i class="fa-solid fa-check" style="color: var(--accent-emerald);"></i> {{ amenity }}
+                  </span>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Showtimes Grid -->
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              {% for show in shows %}
+                <a href="{% url 'bookings:seat_selection' show_id=show.id %}" 
+                   class="glass-card" 
+                   style="padding: 0.75rem 1.25rem; border-radius: var(--radius-sm); border-color: {% if show.status == 'HOUSEFULL' %}rgba(244, 63, 94, 0.4){% else %}var(--border-glow){% endif %}; text-align: center; min-width: 140px; display: inline-block;"
+                   id="show-btn-{{ show.id }}">
+                  <div style="font-size: 1.15rem; font-weight: 800; color: #FFF;">
+                    {{ show.start_time|time:"h:i A" }}
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--primary); font-weight: 700; margin: 0.2rem 0;">
+                    {{ show.screen.get_screen_type_display }}
+                  </div>
+                  <div style="font-size: 0.8rem; color: var(--accent-emerald); font-weight: 700;">
+                    ₹{{ show.base_price }} onwards
+                  </div>
+                  {% if show.status == 'HOUSEFULL' %}
+                    <span style="display: block; font-size: 0.65rem; color: var(--accent-rose); font-weight: 700; text-transform: uppercase;">Housefull</span>
+                  {% endif %}
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="text-align: center; padding: 3rem 1rem;">
+        <i class="fa-solid fa-calendar-xmark" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 0.75rem;"></i>
+        <h4 style="font-size: 1.15rem; margin-bottom: 0.25rem;">No shows scheduled for {{ selected_date|date:"D, d M Y" }} in {{ current_city.name }}</h4>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">Please choose another date or explore other cinemas.</p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- Reviews and Ratings Section -->
+<section style="max-width: 1400px; margin: 0 auto; padding: 2.5rem 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <h2 style="font-size: 1.6rem; color: #FFF; margin-bottom: 0.25rem;">
+        <i class="fa-solid fa-comments" style="color: var(--accent-amber);"></i> Verified Viewer Reviews & Ratings
+      </h2>
+      <p style="color: var(--text-secondary); font-size: 0.9rem;">
+        Only ticket buyers who watched this movie at Cineverse can submit a verified rating.
+      </p>
+    </div>
+
+    <!-- Rating Summary Pill -->
+    <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-md); padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 1rem;">
+      <div style="font-size: 2.2rem; font-weight: 900; color: var(--accent-amber); font-family: var(--font-heading);">
+        {{ movie.average_rating|default:"0.0" }}
+      </div>
+      <div>
+        <div class="star-rating">
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star"></i>
+          <i class="fa-solid fa-star-half-stroke"></i>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-secondary);">
+          Based on {{ movie.total_reviews }} verified viewer reviews
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 340px; gap: 2rem; align-items: flex-start;" class="reviews-layout">
+    <!-- Left Column: Reviews List -->
+    <div>
+      {% if reviews %}
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+          {% for r in reviews %}
+            <div class="glass-card" id="review-card-{{ r.id }}" style="padding: 1.25rem;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent-pink)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; color: #FFF;">
+                    {{ r.user.first_name|first|default:r.user.username|first|upper }}
+                  </div>
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <strong style="color: #FFF;">{{ r.user.get_full_name|default:r.user.username }}</strong>
+                      {% if r.is_verified_viewer %}
+                        <span class="verified-badge" title="Verified Cineverse Ticket Buyer">
+                          <i class="fa-solid fa-circle-check"></i> Verified Viewer
+                        </span>
+                      {% endif %}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                      {{ r.created_at|date:"F d, Y" }}
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <!-- Star Rating -->
+                  <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-weight: 700; color: var(--accent-amber); font-size: 0.85rem;">
+                    ★ {{ r.rating }}/5
+                  </div>
+                  
+                  <!-- Report Button -->
+                  {% if user.is_authenticated and user != r.user %}
+                    <button type="button" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; color: var(--text-muted);" onclick="openReportModal('{{ r.id }}')" title="Report Inappropriate Content">
+                      <i class="fa-solid fa-flag"></i> Report
+                    </button>
+                  {% endif %}
+                </div>
+              </div>
+
+              <h4 style="font-size: 1rem; color: #FFF; margin-bottom: 0.5rem;">{{ r.title }}</h4>
+              <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">{{ r.content }}</p>
+
+              {% if user == r.user %}
+                <div style="margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border-glass); text-align: right;">
+                  <span style="font-size: 0.8rem; color: var(--accent-emerald);"><i class="fa-solid fa-pen-to-square"></i> You wrote this review (Editable below)</span>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="glass-card" style="text-align: center; padding: 3rem 1.5rem;">
+          <i class="fa-solid fa-comments" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 0.75rem;"></i>
+          <h4 style="font-size: 1.1rem; margin-bottom: 0.25rem;">No reviews yet for {{ movie.title }}</h4>
+          <p style="color: var(--text-secondary); font-size: 0.85rem;">Be among the first verified viewers to watch and share your thoughts!</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Right Column: Submit / Edit Review Form or Verified Viewer Requirement Notice -->
+    <div>
+      <div class="glass-card" style="padding: 1.5rem; border-color: var(--primary-glow);">
+        {% if user.is_authenticated %}
+          {% if user_has_watched %}
+            <!-- Verified Viewer Review Form -->
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+              <span class="verified-badge"><i class="fa-solid fa-circle-check"></i> Verified Viewer</span>
+              <h3 style="font-size: 1.15rem; color: #FFF;">
+                {% if existing_user_review %}Edit Your Review{% else %}Write a Review{% endif %}
+              </h3>
+            </div>
+            
+            <form action="{% url 'movies:submit_review' slug=movie.slug %}" method="POST" id="review-form">
+              {% csrf_token %}
+              <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-secondary);">Your Rating (Stars):</label>
+                {{ review_form.rating }}
+              </div>
+
+              <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-secondary);">Headline:</label>
+                {{ review_form.title }}
+              </div>
+
+              <div style="margin-bottom: 1.25rem;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-secondary);">Your Review:</label>
+                {{ review_form.content }}
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="width: 100%;" id="submit-review-btn">
+                <i class="fa-solid fa-paper-plane"></i> {% if existing_user_review %}Update Review{% else %}Publish Verified Review{% endif %}
+              </button>
+            </form>
+          {% else %}
+            <!-- Not Verified Viewer Notice -->
+            <div style="text-align: center; padding: 1rem 0;">
+              <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(99, 102, 241, 0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: var(--primary);">
+                <i class="fa-solid fa-lock" style="font-size: 1.4rem;"></i>
+              </div>
+              <h4 style="font-size: 1.1rem; color: #FFF; margin-bottom: 0.5rem;">Verified Viewers Only</h4>
+              <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
+                To ensure 100% authentic ratings and prevent review manipulation, only patrons who have booked and watched <strong>{{ movie.title }}</strong> can submit a review.
+              </p>
+              <a href="#showtimes-section" class="btn btn-outline" style="width: 100%; font-size: 0.85rem;">
+                <i class="fa-solid fa-ticket"></i> Book Tickets to Unlock
+              </a>
+            </div>
+          {% endif %}
+        {% else %}
+          <!-- Guest Prompt -->
+          <div style="text-align: center; padding: 1rem 0;">
+            <i class="fa-solid fa-circle-user" style="font-size: 2.2rem; color: var(--text-muted); margin-bottom: 0.75rem;"></i>
+            <h4 style="font-size: 1.05rem; margin-bottom: 0.4rem;">Sign In to Share Your Thoughts</h4>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.25rem;">
+              Sign in with your verified Cineverse account after watching the movie to leave a review.
+            </p>
+            <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-primary" style="width: 100%;">
+              Sign In
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Similar Movies & Trending Recommendations -->
+{% if similar_movies %}
+<section style="max-width: 1400px; margin: 0 auto; padding: 2.5rem 2rem 4rem;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+    <h2 style="font-size: 1.5rem; color: #FFF;">
+      <i class="fa-solid fa-clapperboard" style="color: var(--accent-pink);"></i> Similar Movies You May Like
+    </h2>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem;">
+    {% for sm in similar_movies %}
+      <div class="movie-card" style="border-radius: var(--radius-sm);">
+        <div class="movie-poster-wrap">
+          {% if sm.poster_image %}
+            <img src="{{ sm.poster_image.url }}" alt="{{ sm.title }}" class="movie-poster" loading="lazy">
+          {% else %}
+            <div style="width: 100%; height: 100%; background: #1E293B; display: flex; align-items: center; justify-content: center;">
+              <i class="fa-solid fa-film" style="font-size: 2rem;"></i>
+            </div>
+          {% endif %}
+          <div class="movie-rating-badge">★ {{ sm.average_rating|default:"4.5" }}</div>
+        </div>
+        <div class="movie-info" style="padding: 1rem;">
+          <h4 style="font-size: 0.95rem; margin-bottom: 0.3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            <a href="{% url 'movies:movie_detail' slug=sm.slug %}" style="color: #FFF;">{{ sm.title }}</a>
+          </h4>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+            {{ sm.genres.first.name }} • {{ sm.duration_formatted }}
+          </div>
+          <a href="{% url 'movies:movie_detail' slug=sm.slug %}" class="btn btn-outline" style="padding: 0.35rem; font-size: 0.8rem; width: 100%;">
+            View Details
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- Report Review Modal -->
+<div class="cinema-modal-backdrop" id="report-modal" onclick="closeReportModal(event)">
+  <div class="cinema-modal" style="max-width: 500px;" onclick="event.stopPropagation()">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-glass);">
+      <h3 style="font-size: 1.15rem; color: #FFF; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-rose);"></i> Report Review
+      </h3>
+      <button onclick="closeReportModal()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.25rem;"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="report-review-form" method="POST" action="">
+      {% csrf_token %}
+      <div style="padding: 1.5rem;">
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+          Help us keep Cineverse reviews authentic, safe, and spoiler-free.
+        </p>
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem; color: var(--text-secondary);">Reason for report:</label>
+          {{ report_form.reason }}
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem; color: var(--text-secondary);">Additional details (Optional):</label>
+          {{ report_form.details }}
+        </div>
+      </div>
+      <div style="padding: 1rem 1.5rem; background: rgba(0,0,0,0.2); border-top: 1px solid var(--border-glass); display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeReportModal()">Cancel</button>
+        <button type="submit" class="btn btn-danger">Submit Report</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function openReportModal(reviewId) {
+    const modal = document.getElementById('report-modal');
+    const form = document.getElementById('report-review-form');
+    form.action = `/reviews/${reviewId}/report/`;
+    modal.classList.add('open');
+  }
+
+  function closeReportModal() {
+    document.getElementById('report-modal').classList.remove('open');
+  }
+</script>
+{% endblock %}

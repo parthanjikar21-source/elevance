@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Select Seats - {{ show.movie.title }} | Cineverse{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 6rem;">
+  <!-- Show Info Header Bar -->
+  <div class="glass-card" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; border-color: var(--border-glow);">
+    <div>
+      <div style="font-size: 0.8rem; color: var(--accent-pink); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+        <i class="fa-solid fa-location-dot"></i> {{ show.screen.theater.name }} • {{ show.screen.name }}
+      </div>
+      <h1 style="font-size: 1.8rem; color: #FFF; margin-bottom: 0.25rem;">
+        {{ show.movie.title }}
+      </h1>
+      <div style="font-size: 0.9rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.75rem;">
+        <span><i class="fa-regular fa-calendar"></i> {{ show.show_date|date:"l, d F Y" }}</span>
+        <span>•</span>
+        <span style="color: var(--accent-amber); font-weight: 700;"><i class="fa-regular fa-clock"></i> {{ show.start_time|time:"h:i A" }}</span>
+        <span>•</span>
+        <span class="format-pill">{{ show.screen.get_screen_type_display }}</span>
+      </div>
+    </div>
+
+    <!-- Active Timer Indicator (if seats already held) -->
+    <div id="hold-timer-container" style="{% if not seconds_remaining %}display: none;{% endif %}">
+      <div class="timer-pill" id="hold-timer-pill">
+        <i class="fa-solid fa-stopwatch"></i>
+        <span>Seats Held For: <strong id="timer-display">02:00</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Seat Map Area -->
+  <div class="seat-map-wrapper">
+    <!-- Seat Legend -->
+    <div class="seat-legend">
+      <div class="legend-item">
+        <div class="legend-swatch seat-available" style="border: 1px solid rgba(255,255,255,0.2);"></div>
+        <span>Available</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch seat-selected"></div>
+        <span>Selected By You</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch seat-reserved"></div>
+        <span>Temporary Hold (2-min)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch seat-booked"></div>
+        <span>Booked</span>
+      </div>
+      <div class="legend-item" style="border-left: 1px solid var(--border-glass); padding-left: 1rem;">
+        <span style="color: var(--accent-cyan); font-weight: 700;">Regular</span>: ₹{{ tier_prices.REGULAR }}
+      </div>
+      <div class="legend-item">
+        <span style="color: var(--primary); font-weight: 700;">Premium</span>: ₹{{ tier_prices.PREMIUM }}
+      </div>
+      <div class="legend-item">
+        <span style="color: var(--accent-amber); font-weight: 700;">VIP Recliner</span>: ₹{{ tier_prices.VIP_RECLINER }}
+      </div>
+    </div>
+
+    <!-- Screen Curved Graphic -->
+    <div class="screen-display">
+      <div class="screen-curve"></div>
+      <div class="screen-text">ALL EYES THIS WAY • AUDITORIUM SCREEN</div>
+    </div>
+
+    <!-- Seat Matrix Grid -->
+    <div class="seat-grid" id="seat-grid-container">
+      {% for row_id, seat_list in rows.items %}
+        <div class="seat-row" data-row="{{ row_id }}">
+          <div class="row-label">{{ row_id }}</div>
+          {% for item in seat_list %}
+            {% with s=item.seat %}
+              <button type="button" 
+                      class="seat-btn {% if item.status == 'BOOKED' %}seat-booked{% elif item.status == 'RESERVED' %}seat-reserved{% elif item.status == 'MY_RESERVED' %}seat-held-by-me{% else %}seat-available{% endif %} tier-{{ s.seat_type|lower }}"
+                      data-seat-id="{{ s.id }}"
+                      data-seat-code="{{ s.seat_code }}"
+                      data-seat-price="{{ item.price }}"
+                      data-seat-tier="{{ s.get_seat_type_display }}"
+                      data-seat-status="{{ item.status }}"
+                      title="{{ s.seat_code }} ({{ s.get_seat_type_display }}) - ₹{{ item.price }} [{{ item.status }}]"
+                      {% if item.status == 'BOOKED' or item.status == 'RESERVED' %}disabled{% endif %}
+                      id="seat-btn-{{ s.seat_code }}"
+                      onclick="toggleSeatSelection(this)">
+                {{ s.seat_number }}
+              </button>
+            {% endwith %}
+          {% endfor %}
+          <div class="row-label">{{ row_id }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Floating Reservation Dock at Bottom -->
+<div style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(14, 22, 38, 0.95); backdrop-filter: blur(16px); border-top: 1px solid var(--border-glass); padding: 1rem 2rem; z-index: 1000; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
+  <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+    <!-- Selected Seats Summary -->
+    <div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Selected Seats</div>
+      <div style="font-size: 1.15rem; font-weight: 700; color: #FFF; display: flex; align-items: center; gap: 0.5rem;" id="selected-seats-display">
+        <span style="color: var(--text-secondary); font-size: 0.95rem;">None selected yet</span>
+      </div>
+    </div>
+
+    <!-- Total Price & Action -->
+    <div style="display: flex; align-items: center; gap: 1.5rem;">
+      <div style="text-align: right;">
+        <div style="font-size: 0.8rem; color: var(--text-muted);">Total (Excl. Convenience fee)</div>
+        <div style="font-size: 1.6rem; font-weight: 900; color: var(--accent-emerald); font-family: var(--font-heading);" id="total-price-display">
+          ₹0.00
+        </div>
+      </div>
+
+      <form id="reserve-form" method="POST" action="{% url 'bookings:reserve_seats' show_id=show.id %}">
+        {% csrf_token %}
+        <div id="hidden-seat-inputs"></div>
+        <button type="submit" class="btn btn-primary" id="proceed-to-payment-btn" style="padding: 0.75rem 2rem; font-size: 1rem;" disabled>
+          <i class="fa-solid fa-lock"></i> Hold Seats & Proceed (2 Min)
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let selectedSeats = new Map(); // seatId -> { code, price, tier }
+  const showId = {{ show.id }};
+  let secondsRemaining = {{ seconds_remaining|default:0 }};
+  let timerInterval = null;
+
+  // Pre-load user-held seats if any
+  const preSelectedIds = {{ user_held_seats|safe }};
+  document.addEventListener('DOMContentLoaded', () => {
+    preSelectedIds.forEach(id => {
+      const btn = document.querySelector(`.seat-btn[data-seat-id="${id}"]`);
+      if (btn) {
+        toggleSeatSelection(btn, true);
+      }
+    });
+
+    if (secondsRemaining > 0) {
+      startCountdown(secondsRemaining);
+    }
+
+    // Start background live availability poller every 4 seconds
+    setInterval(pollSeatAvailability, 4000);
+  });
+
+  function toggleSeatSelection(btn, forceSelect = false) {
+    const seatId = btn.dataset.seatId;
+    const seatCode = btn.dataset.seatCode;
+    const price = parseFloat(btn.dataset.seatPrice);
+    const tier = btn.dataset.seatTier;
+
+    if (selectedSeats.has(seatId) && !forceSelect) {
+      selectedSeats.delete(seatId);
+      btn.classList.remove('seat-selected');
+      if (btn.dataset.seatStatus === 'MY_RESERVED') {
+        btn.classList.add('seat-held-by-me');
+      } else {
+        btn.classList.add('seat-available');
+      }
+    } else {
+      if (selectedSeats.size >= 8) {
+        alert("You can select a maximum of 8 seats per booking transaction.");
+        return;
+      }
+      selectedSeats.set(seatId, { code: seatCode, price: price, tier: tier });
+      btn.classList.remove('seat-available', 'seat-held-by-me');
+      btn.classList.add('seat-selected');
+    }
+
+    updateSummaryUI();
+  }
+
+  function updateSummaryUI() {
+    const display = document.getElementById('selected-seats-display');
+    const priceDisplay = document.getElementById('total-price-display');
+    const proceedBtn = document.getElementById('proceed-to-payment-btn');
+    const inputsContainer = document.getElementById('hidden-seat-inputs');
+
+    inputsContainer.innerHTML = '';
+
+    if (selectedSeats.size === 0) {
+      display.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.95rem;">None selected yet</span>';
+      priceDisplay.innerText = '₹0.00';
+      proceedBtn.disabled = true;
+      return;
+    }
+
+    let totalPrice = 0;
+    const badges = [];
+
+    selectedSeats.forEach((item, id) => {
+      totalPrice += item.price;
+      badges.push(`<span style="background: rgba(16, 185, 129, 0.2); border: 1px solid var(--accent-emerald); color: #34D399; padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.85rem;">${item.code} (${item.tier})</span>`);
+      
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'seat_ids';
+      input.value = id;
+      inputsContainer.appendChild(input);
+    });
+
+    display.innerHTML = badges.join(' ');
+    priceDisplay.innerText = `₹${totalPrice.toFixed(2)}`;
+    proceedBtn.disabled = false;
+  }
+
+  // 2-Minute Countdown Timer
+  function startCountdown(duration) {
+    const container = document.getElementById('hold-timer-container');
+    const pill = document.getElementById('hold-timer-pill');
+    const display = document.getElementById('timer-display');
+    container.style.display = 'block';
+
+    let timer = duration;
+    clearInterval(timerInterval);
+
+    timerInterval = setInterval(() => {
+      const minutes = Math.floor(timer / 60);
+      const seconds = timer % 60;
+      display.innerText = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+      if (timer <= 30) {
+        pill.classList.add('urgent');
+      }
+
+      if (--timer < 0) {
+        clearInterval(timerInterval);
+        alert("Your 2-minute temporary seat hold has expired. Seats are now released.");
+        window.location.reload();
+      }
+    }, 1000);
+  }
+
+  // Live Seat Availability Poller
+  function pollSeatAvailability() {
+    fetch(`/bookings/api/shows/${showId}/availability/`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data || !data.seat_statuses) return;
+
+        Object.entries(data.seat_statuses).forEach(([seatId, status]) => {
+          const btn = document.querySelector(`.seat-btn[data-seat-id="${seatId}"]`);
+          if (!btn) return;
+
+          // If currently selected locally by user, preserve selection unless booked by someone else
+          const isLocallySelected = selectedSeats.has(seatId);
+
+          if (status === 'BOOKED') {
+            btn.className = `seat-btn seat-booked tier-${btn.dataset.seatTier.toLowerCase()}`;
+            btn.disabled = true;
+            if (isLocallySelected) {
+              selectedSeats.delete(seatId);
+              updateSummaryUI();
+              alert(`Seat ${btn.dataset.seatCode} was just confirmed by another user.`);
+            }
+          } else if (status === 'RESERVED') {
+            if (!isLocallySelected) {
+              btn.className = `seat-btn seat-reserved tier-${btn.dataset.seatTier.toLowerCase()}`;
+              btn.disabled = true;
+            }
+          }
+        });
+      })
+      .catch(err => console.debug("Availability poll skipped:", err));
+  }
+</script>
+{% endblock %}

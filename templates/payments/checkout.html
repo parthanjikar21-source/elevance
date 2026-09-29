@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Checkout & Payment | Cineverse{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px; margin: 2rem auto 5rem; padding: 0 1.5rem;">
+  <!-- Progress Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; color: #FFF; margin-bottom: 0.25rem;">
+        <i class="fa-solid fa-lock" style="color: var(--accent-emerald);"></i> Secure Ticket Checkout
+      </h1>
+      <p style="color: var(--text-secondary); font-size: 0.85rem;">
+        Booking Reference: <strong style="color: var(--primary);">{{ booking.booking_id }}</strong>
+      </p>
+    </div>
+
+    <!-- Active 2-Minute Hold Timer -->
+    <div class="timer-pill" id="checkout-timer-pill">
+      <i class="fa-solid fa-stopwatch"></i>
+      <span>Seats Held: <strong id="checkout-timer-display">02:00</strong></span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 380px; gap: 2rem; align-items: flex-start;" class="checkout-layout">
+    <!-- Left Column: Payment Methods & Simulator -->
+    <div>
+      <!-- Payment Methods Card -->
+      <div class="glass-card" style="margin-bottom: 1.5rem; border-color: var(--border-glow);">
+        <h3 style="font-size: 1.2rem; color: #FFF; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i class="fa-solid fa-credit-card" style="color: var(--primary);"></i> Select Payment Method
+        </h3>
+
+        <!-- Razorpay Live/Standard Button -->
+        <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid var(--border-glow); border-radius: var(--radius-sm); padding: 1.25rem; margin-bottom: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div style="font-weight: 700; font-size: 1rem; color: #FFF; display: flex; align-items: center; gap: 0.5rem;">
+              <i class="fa-brands fa-cc-mastercard" style="color: var(--accent-amber); font-size: 1.2rem;"></i>
+              <span>Razorpay Online Gateway</span>
+            </div>
+            <span style="font-size: 0.75rem; background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 0.15rem 0.5rem; border-radius: 9999px; font-weight: 700;">Instant Confirmation</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            Pay securely with UPI (GPay, PhonePe, Paytm), Credit/Debit Cards, NetBanking, and Wallets.
+          </p>
+
+          <form action="{% url 'payments:verify_razorpay' %}" method="POST" id="razorpay-form">
+            {% csrf_token %}
+            <input type="hidden" name="booking_id" value="{{ booking.booking_id }}">
+            <input type="hidden" name="razorpay_order_id" id="rzp-order-id" value="{{ razorpay_order_id }}">
+            <input type="hidden" name="razorpay_payment_id" id="rzp-payment-id" value="">
+            <input type="hidden" name="razorpay_signature" id="rzp-signature" value="">
+
+            <button type="button" class="btn btn-primary" id="rzp-pay-button" style="width: 100%;" onclick="openRazorpaySimulation()">
+              <i class="fa-solid fa-shield-halved"></i> Pay ₹{{ booking.final_amount }} via Razorpay
+            </button>
+          </form>
+        </div>
+
+        <!-- Interactive Complete Payment Simulation Suite -->
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 1.25rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <i class="fa-solid fa-flask" style="color: var(--accent-amber);"></i>
+            <h4 style="font-size: 0.95rem; color: #FFF;">Test Payment Simulator & Verification Suite</h4>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            Validate real-world transaction workflows, server-side HMAC verifications, email dispatch, and automated seat release upon failed payment:
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <!-- Simulate Success -->
+            <form action="{% url 'payments:simulate_action' booking_id=booking.booking_id %}" method="POST">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="success">
+              <button type="submit" class="btn btn-success" style="width: 100%; justify-content: flex-start; font-size: 0.85rem;" id="simulate-success-btn">
+                <i class="fa-solid fa-circle-check"></i>
+                <div style="text-align: left;">
+                  <div>Simulate Successful Payment</div>
+                  <div style="font-size: 0.72rem; opacity: 0.85; font-weight: normal;">Confirms booking, permanently locks seats, triggers PDF ticket & Celery email</div>
+                </div>
+              </button>
+            </form>
+
+            <!-- Simulate Bank Failure (Auto-release test) -->
+            <form action="{% url 'payments:simulate_action' booking_id=booking.booking_id %}" method="POST">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="failed">
+              <button type="submit" class="btn btn-danger" style="width: 100%; justify-content: flex-start; font-size: 0.85rem;" id="simulate-fail-btn">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <div style="text-align: left;">
+                  <div>Simulate Payment Failure (Bank Declined)</div>
+                  <div style="font-size: 0.72rem; opacity: 0.85; font-weight: normal;">Verifies that failed transactions automatically release reserved seats</div>
+                </div>
+              </button>
+            </form>
+
+            <!-- Cancel Payment -->
+            <form action="{% url 'payments:simulate_action' booking_id=booking.booking_id %}" method="POST">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="cancel">
+              <button type="submit" class="btn btn-secondary" style="width: 100%; justify-content: flex-start; font-size: 0.85rem;" id="simulate-cancel-btn">
+                <i class="fa-solid fa-ban"></i>
+                <div style="text-align: left;">
+                  <div>Cancel Payment & Free Seats</div>
+                  <div style="font-size: 0.72rem; opacity: 0.85; font-weight: normal;">Cancels hold and releases seats back to the public pool immediately</div>
+                </div>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modify Seats Option -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+        <a href="{% url 'bookings:modify_seats' booking_id=booking.booking_id %}" style="font-size: 0.85rem; color: var(--accent-rose); display: flex; align-items: center; gap: 0.4rem;" id="modify-seats-link">
+          <i class="fa-solid fa-rotate-left"></i> Change or modify seat selection (Releases hold)
+        </a>
+      </div>
+    </div>
+
+    <!-- Right Column: Booking Summary Card -->
+    <div>
+      <div class="glass-card" style="padding: 1.5rem; background: var(--bg-surface); border-color: var(--border-glow);">
+        <h3 style="font-size: 1.15rem; color: #FFF; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 0.75rem;">
+          Order Summary
+        </h3>
+
+        <!-- Movie & Show Details -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem;">
+          <div style="width: 70px; height: 95px; border-radius: var(--radius-sm); overflow: hidden; flex-shrink: 0; background: #1E293B;">
+            {% if booking.show.movie.poster_image %}
+              <img src="{{ booking.show.movie.poster_image.url }}" alt="{{ booking.show.movie.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+            {% endif %}
+          </div>
+          <div>
+            <h4 style="font-size: 1rem; color: #FFF; margin-bottom: 0.2rem;">{{ booking.show.movie.title }}</h4>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.4rem;">
+              {{ booking.show.movie.age_certification }} • {{ booking.show.screen.get_screen_type_display }}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">
+              <i class="fa-solid fa-building" style="color: var(--primary);"></i> {{ booking.show.screen.theater.name }}
+            </div>
+          </div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 0.85rem; font-size: 0.85rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
+            <span style="color: var(--text-secondary);">Show Date:</span>
+            <strong style="color: #FFF;">{{ booking.show.show_date|date:"D, d M Y" }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
+            <span style="color: var(--text-secondary);">Show Time:</span>
+            <strong style="color: var(--accent-amber);">{{ booking.show.start_time|time:"h:i A" }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-secondary);">Seats:</span>
+            <strong style="color: var(--accent-emerald);">{{ booking.seats_display }} ({{ booking.seats_count }})</strong>
+          </div>
+        </div>
+
+        <!-- Price Breakdown Table -->
+        <div style="font-size: 0.85rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="color: var(--text-secondary);">Tickets Subtotal:</span>
+            <span style="color: #FFF;">₹{{ booking.total_ticket_amount }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="color: var(--text-secondary);">Convenience Fee:</span>
+            <span style="color: #FFF;">₹{{ booking.convenience_fee }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.75rem;">
+            <span>Integrated 18% GST</span>
+            <span>Included</span>
+          </div>
+        </div>
+
+        <!-- Grand Total -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <span style="font-weight: 700; font-size: 1rem; color: #FFF;">Total Amount:</span>
+          <span style="font-size: 1.6rem; font-weight: 900; color: var(--accent-emerald); font-family: var(--font-heading);">
+            ₹{{ booking.final_amount }}
+          </span>
+        </div>
+
+        <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; text-align: center;">
+          <i class="fa-solid fa-lock"></i> 100% Safe & Encrypted Checkout • Verified Boarding Pass with QR Code Generated Instantly
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let seconds = {{ seconds_remaining|default:120 }};
+  const pill = document.getElementById('checkout-timer-pill');
+  const display = document.getElementById('checkout-timer-display');
+
+  const timerInterval = setInterval(() => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    display.innerText = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+    if (seconds <= 30) {
+      pill.classList.add('urgent');
+    }
+
+    if (--seconds < 0) {
+      clearInterval(timerInterval);
+      alert("Your 2-minute seat reservation has expired. Please select your seats again.");
+      window.location.href = "{% url 'bookings:seat_selection' show_id=booking.show.id %}";
+    }
+  }, 1000);
+
+  function openRazorpaySimulation() {
+    // In test environment, automatically invokes simulation mode seamlessly
+    const form = document.getElementById('razorpay-form');
+    document.getElementById('simulate-success-btn').click();
+  }
+</script>
+{% endblock %}

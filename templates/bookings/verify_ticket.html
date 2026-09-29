@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Verify Ticket - Cineverse Cinema Gate Scanner{% endblock %}
+
+{% block content %}
+<div style="max-width: 650px; margin: 3rem auto; padding: 0 1.5rem;">
+  <div class="glass-card" style="border-color: {% if booking.status == 'CONFIRMED' and not booking.is_checked_in %}var(--accent-emerald){% elif booking.is_checked_in %}var(--accent-amber){% else %}var(--accent-rose){% endif %}; box-shadow: var(--shadow-md);">
+    
+    <!-- Verification Status Banner -->
+    <div style="text-align: center; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-glass); margin-bottom: 1.5rem;">
+      {% if booking.status == 'CONFIRMED' and not booking.is_checked_in %}
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); border: 2px solid var(--accent-emerald); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: var(--accent-emerald);">
+          <i class="fa-solid fa-circle-check" style="font-size: 2rem;"></i>
+        </div>
+        <h2 style="color: var(--accent-emerald); font-size: 1.8rem; margin-bottom: 0.25rem;">VALID TICKET</h2>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">Official Cineverse Ticket • Ready for Admission</p>
+      {% elif booking.is_checked_in %}
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.2); border: 2px solid var(--accent-amber); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: var(--accent-amber);">
+          <i class="fa-solid fa-clock-rotate-left" style="font-size: 2rem;"></i>
+        </div>
+        <h2 style="color: var(--accent-amber); font-size: 1.8rem; margin-bottom: 0.25rem;">ALREADY CHECKED IN</h2>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">Admitted at {{ booking.checked_in_at|date:"h:i A on d M Y" }} • Duplicate entry blocked</p>
+      {% else %}
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(244, 63, 94, 0.2); border: 2px solid var(--accent-rose); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: var(--accent-rose);">
+          <i class="fa-solid fa-ban" style="font-size: 2rem;"></i>
+        </div>
+        <h2 style="color: var(--accent-rose); font-size: 1.8rem; margin-bottom: 0.25rem;">INVALID / {{ booking.get_status_display|upper }}</h2>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">This booking is not active</p>
+      {% endif %}
+    </div>
+
+    {% if action_message %}
+      <div style="background: rgba(16, 185, 129, 0.2); border: 1px solid var(--accent-emerald); padding: 0.75rem 1rem; border-radius: var(--radius-sm); color: #FFF; font-size: 0.9rem; margin-bottom: 1.5rem; text-align: center;">
+        <i class="fa-solid fa-circle-check"></i> {{ action_message }}
+      </div>
+    {% endif %}
+
+    <!-- Ticket Summary Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; font-size: 0.9rem; margin-bottom: 2rem;">
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Booking Reference</div>
+        <strong style="color: #FFF; font-size: 1.1rem;">{{ booking.booking_id }}</strong>
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Attendee</div>
+        <strong style="color: #FFF;">{{ booking.user.get_full_name|default:booking.user.username }}</strong>
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Movie Title</div>
+        <strong style="color: #FFF;">{{ booking.show.movie.title }}</strong>
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Cinema & Screen</div>
+        <strong style="color: #FFF;">{{ booking.show.screen.theater.name }}</strong>
+        <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ booking.show.screen.name }}</div>
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Showtime</div>
+        <strong style="color: var(--accent-amber);">{{ booking.show.show_date|date:"D, d M" }} at {{ booking.show.start_time|time:"h:i A" }}</strong>
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Seats Assigned</div>
+        <strong style="color: var(--accent-emerald); font-size: 1.2rem;">{{ booking.seats_display }}</strong>
+      </div>
+    </div>
+
+    <!-- Staff Check-in Button -->
+    {% if is_staff %}
+      {% if not booking.is_checked_in and booking.status == 'CONFIRMED' %}
+        <form method="POST" action="">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success" style="width: 100%; padding: 0.85rem; font-size: 1.05rem;" id="admit-attendee-btn">
+            <i class="fa-solid fa-user-check"></i> Admit Attendee / Check In Now
+          </button>
+        </form>
+      {% elif booking.is_checked_in %}
+        <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+          <i class="fa-solid fa-lock"></i> Check-in locked to prevent duplicate barcode re-use.
+        </div>
+      {% endif %}
+    {% else %}
+      <div style="background: rgba(255,255,255,0.05); padding: 0.75rem; border-radius: var(--radius-sm); text-align: center; font-size: 0.85rem; color: var(--text-muted);">
+        <i class="fa-solid fa-shield"></i> Cinema Staff can log in with staff credentials to perform instant digital admissions.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

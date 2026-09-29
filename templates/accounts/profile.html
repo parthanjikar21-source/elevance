@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}My Profile & Booking History | Cineverse{% endblock %}
+
+{% block content %}
+<div style="max-width: 1400px; margin: 3rem auto 5rem; padding: 0 2rem;">
+  <!-- Profile Header Card -->
+  <div class="glass-card" style="margin-bottom: 2.5rem; border-color: var(--border-glow); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; padding: 2rem;">
+    <div style="display: flex; align-items: center; gap: 1.5rem;">
+      <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent-pink)); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 800; color: #FFF; box-shadow: 0 0 20px var(--primary-glow);">
+        {{ user.first_name|first|default:user.username|first|upper }}
+      </div>
+      <div>
+        <h1 style="font-size: 1.8rem; color: #FFF; margin-bottom: 0.25rem;">
+          {{ user.get_full_name|default:user.username }}
+        </h1>
+        <div style="color: var(--text-secondary); font-size: 0.9rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+          <span><i class="fa-regular fa-envelope"></i> {{ user.email }}</span>
+          {% if user.phone_number %}<span><i class="fa-solid fa-phone"></i> {{ user.phone_number }}</span>{% endif %}
+          <span><i class="fa-solid fa-location-dot" style="color: var(--accent-rose);"></i> Preferred: {{ user.preferred_city.name|default:"Not set" }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loyalty & Confirmed Bookings Counter -->
+    <div style="display: flex; gap: 1rem;">
+      <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-sm); padding: 0.75rem 1.25rem; text-align: center;">
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Loyalty Points</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-amber);">{{ user.loyalty_points }}</div>
+      </div>
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-sm); padding: 0.75rem 1.25rem; text-align: center;">
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Confirmed Bookings</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-emerald);">{{ user.confirmed_bookings_count }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Complete Payment and Booking History -->
+  <div style="margin-bottom: 3rem;">
+    <h2 style="font-size: 1.6rem; color: #FFF; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Complete Payment & Booking History
+    </h2>
+
+    {% if bookings %}
+      <div class="custom-table-container">
+        <table class="custom-table" id="bookings-history-table">
+          <thead>
+            <tr>
+              <th>Booking ID</th>
+              <th>Movie & Cinema</th>
+              <th>Showtime</th>
+              <th>Seats</th>
+              <th>Amount Paid</th>
+              <th>Booking Status</th>
+              <th>Payment Reference</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in bookings %}
+              <tr>
+                <td>
+                  <strong style="color: #FFF;">{{ b.booking_id }}</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">{{ b.created_at|date:"d M Y, h:i A" }}</div>
+                </td>
+                <td>
+                  <strong style="color: #FFF;">{{ b.show.movie.title }}</strong>
+                  <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    {{ b.show.screen.theater.name }} ({{ b.show.screen.name }})
+                  </div>
+                </td>
+                <td>
+                  <div style="color: #FFF;">{{ b.show.show_date|date:"D, d M Y" }}</div>
+                  <div style="color: var(--accent-amber); font-weight: 700;">{{ b.show.start_time|time:"h:i A" }}</div>
+                </td>
+                <td>
+                  <strong style="color: var(--accent-emerald);">{{ b.seats_display }}</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">{{ b.seats_count }} seat{{ b.seats_count|pluralize }}</div>
+                </td>
+                <td>
+                  <strong style="color: #FFF; font-size: 1rem;">₹{{ b.final_amount }}</strong>
+                </td>
+                <td>
+                  {% if b.status == 'CONFIRMED' %}
+                    <span style="background: rgba(16, 185, 129, 0.2); border: 1px solid var(--accent-emerald); color: #34D399; padding: 0.2rem 0.5rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700;">
+                      <i class="fa-solid fa-circle-check"></i> Confirmed
+                    </span>
+                  {% elif b.status == 'PENDING_PAYMENT' %}
+                    <span style="background: rgba(245, 158, 11, 0.2); border: 1px solid var(--accent-amber); color: var(--accent-amber); padding: 0.2rem 0.5rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700;">
+                      <i class="fa-solid fa-clock"></i> Pending
+                    </span>
+                  {% else %}
+                    <span style="background: rgba(244, 63, 94, 0.2); border: 1px solid var(--accent-rose); color: var(--accent-rose); padding: 0.2rem 0.5rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700;">
+                      {{ b.get_status_display }}
+                    </span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% for p in b.payments.all|slice:":1" %}
+                    <div style="font-size: 0.8rem; color: #A5B4FC;">
+                      <code>{{ p.transaction_id|slice:":16" }}</code>
+                    </div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted);">
+                      {{ p.get_gateway_display }} • {{ p.get_status_display }}
+                    </div>
+                  {% empty %}
+                    <span style="color: var(--text-muted); font-size: 0.8rem;">None</span>
+                  {% endfor %}
+                </td>
+                <td>
+                  <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    {% if b.status == 'CONFIRMED' %}
+                      <a href="{% url 'bookings:booking_detail' booking_id=b.booking_id %}" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="View E-Ticket">
+                        <i class="fa-solid fa-ticket"></i> Ticket
+                      </a>
+                      <a href="{% url 'bookings:download_ticket_pdf' booking_id=b.booking_id %}" class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="Download PDF">
+                        <i class="fa-solid fa-download"></i> PDF
+                      </a>
+                      <a href="{% url 'movies:movie_detail' slug=b.show.movie.slug %}#review-form" class="btn btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" title="Rate Movie">
+                        <i class="fa-solid fa-star"></i> Review
+                      </a>
+                    {% elif b.status == 'PENDING_PAYMENT' %}
+                      <a href="{% url 'payments:checkout' booking_id=b.booking_id %}" class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">
+                        Pay Now
+                      </a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="glass-card" style="text-align: center; padding: 3rem;">
+        <i class="fa-solid fa-ticket-simple" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 0.75rem;"></i>
+        <h4 style="font-size: 1.15rem; margin-bottom: 0.25rem;">No bookings yet</h4>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem;">Explore movies now showing in {{ current_city.name }} and pick your favorite seats!</p>
+        <a href="{% url 'movies:movie_list' %}" class="btn btn-primary">
+          Discover Movies
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Profile Settings Update -->
+  <div class="glass-card" style="max-width: 600px; padding: 2rem;">
+    <h3 style="font-size: 1.25rem; color: #FFF; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i class="fa-solid fa-user-gear" style="color: var(--primary);"></i> Account Settings
+    </h3>
+
+    <form method="POST" action="">
+      {% csrf_token %}
+      {% for field in form %}
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem;">
+            {{ field.label }}:
+          </label>
+          {{ field }}
+        </div>
+      {% endfor %}
+
+      <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;" id="save-profile-btn">
+        <i class="fa-solid fa-floppy-disk"></i> Save Profile Details
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

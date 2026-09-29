@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Cinemas & Multiplexes in {{ current_city.name }} | Cineverse{% endblock %}
+
+{% block content %}
+<div style="max-width: 1400px; margin: 2.5rem auto 5rem; padding: 0 2rem;">
+  <div style="margin-bottom: 2rem;">
+    <div style="color: var(--accent-pink); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">
+      <i class="fa-solid fa-location-dot"></i> {{ current_city.name }}
+    </div>
+    <h1 style="font-size: 2.2rem; color: #FFF; margin-bottom: 0.5rem;">Cineverse Multiplexes & Theaters</h1>
+    <p style="color: var(--text-secondary); font-size: 0.95rem;">
+      Explore premium sound and projection technologies across auditoriums in your area.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 2rem;">
+    {% for th in theaters %}
+      <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;" id="theater-card-{{ th.id }}">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+            <h3 style="font-size: 1.3rem; color: #FFF;">{{ th.name }}</h3>
+            <span style="font-size: 0.75rem; background: rgba(99, 102, 241, 0.2); border: 1px solid var(--border-glow); color: #A5B4FC; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-weight: 700;">
+              {{ th.screens.count }} Screen{{ th.screens.count|pluralize }}
+            </span>
+          </div>
+
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
+            <i class="fa-solid fa-map-pin" style="color: var(--accent-rose);"></i> {{ th.address }}
+            {% if th.landmark %}<br/><span style="color: var(--text-muted); font-size: 0.8rem;">Landmark: {{ th.landmark }}</span>{% endif %}
+          </p>
+
+          <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+            {% for amenity in th.amenities_list %}
+              <span style="font-size: 0.72rem; background: rgba(255,255,255,0.05); padding: 0.2rem 0.5rem; border-radius: var(--radius-full); color: var(--text-secondary);">
+                {{ amenity }}
+              </span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-glass); padding-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.8rem; color: var(--accent-emerald); font-weight: 700;">
+            <i class="fa-solid fa-circle-check"></i> Open & Screening
+          </span>
+          <a href="{% url 'theaters:theater_detail' slug=th.slug %}" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem;">
+            View Schedules <i class="fa-solid fa-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+    {% empty %}
+      <div class="glass-card" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+        <i class="fa-solid fa-building-circle-xmark" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+        <h4>No theaters found in this city</h4>
+        <p style="color: var(--text-secondary); font-size: 0.85rem;">Please select another city from the navbar dropdown.</p>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

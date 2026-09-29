@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #0F172A; color: #F8FAFC; margin: 0; padding: 20px; }
+    .card { max-width: 600px; margin: 0 auto; background: #1E293B; border-radius: 12px; overflow: hidden; border: 1px solid #334155; }
+    .header { background: linear-gradient(135deg, #4F46E5, #9333EA); padding: 30px; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; color: #FFFFFF; }
+    .content { padding: 30px; }
+    .badge { display: inline-block; background: #10B981; color: #FFFFFF; padding: 4px 12px; border-radius: 9999px; font-weight: bold; font-size: 12px; }
+    .grid { display: table; width: 100%; margin: 20px 0; }
+    .row { display: table-row; }
+    .col { display: table-cell; padding: 8px 0; border-bottom: 1px solid #334155; }
+    .label { color: #94A3B8; font-size: 13px; }
+    .val { color: #F8FAFC; font-weight: bold; font-size: 15px; }
+    .seats { color: #F59E0B; font-size: 18px; font-weight: bold; }
+    .footer { padding: 20px 30px; background: #0F172A; text-align: center; font-size: 12px; color: #64748B; border-top: 1px solid #334155; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>🎬 Booking Confirmed!</h1>
+      <p style="margin: 8px 0 0 0; color: #E2E8F0; font-size: 14px;">Your tickets for <strong>{{ movie.title }}</strong> are ready</p>
+    </div>
+    <div class="content">
+      <div style="text-align: right; margin-bottom: 15px;">
+        <span class="badge">CONFIRMED</span>
+      </div>
+      <p>Hello <strong>{{ user.first_name|default:user.username }}</strong>,</p>
+      <p>Thank you for choosing Cineverse! Your e-ticket is attached to this email as a PDF. Please scan the QR code on your ticket at the auditorium entrance.</p>
+      
+      <div class="grid">
+        <div class="row">
+          <div class="col label">Booking ID:</div>
+          <div class="col val" style="text-align: right;">{{ booking.booking_id }}</div>
+        </div>
+        <div class="row">
+          <div class="col label">Movie:</div>
+          <div class="col val" style="text-align: right;">{{ movie.title }}</div>
+        </div>
+        <div class="row">
+          <div class="col label">Cinema:</div>
+          <div class="col val" style="text-align: right;">{{ theater.name }} ({{ screen.name }})</div>
+        </div>
+        <div class="row">
+          <div class="col label">Date & Time:</div>
+          <div class="col val" style="text-align: right;">{{ show.show_date|date:"D, d M Y" }} at {{ show.start_time|time:"h:i A" }}</div>
+        </div>
+        <div class="row">
+          <div class="col label">Booked Seats:</div>
+          <div class="col val seats" style="text-align: right;">{{ seats }}</div>
+        </div>
+        <div class="row">
+          <div class="col label">Amount Paid:</div>
+          <div class="col val" style="text-align: right; color: #10B981;">₹{{ booking.final_amount }}</div>
+        </div>
+      </div>
+
+      <p style="font-size: 13px; color: #94A3B8; margin-top: 25px;">
+        Note: Once the show has concluded, you'll earn your <strong>Verified Viewer Badge</strong> and will be able to share your authentic rating and review on Cineverse!
+      </p>
+    </div>
+    <div class="footer">
+      © 2026 Cineverse Cinemas Inc. All rights reserved. • Enjoy the movie!
+    </div>
+  </div>
+</body>
+</html>
