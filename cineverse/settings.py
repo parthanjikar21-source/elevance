@@ -63,12 +63,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'cineverse.wsgi.application'
 
-# Database
-# Using SQLite with optimized pragmas for development and testing
+# Database configuration
+# On Vercel serverless functions, the root is read-only.
+# We automatically copy the pre-seeded SQLite database to /tmp for full read-write functionality.
+DB_FILE = BASE_DIR / 'db.sqlite3'
+if os.getenv('VERCEL'):
+    import shutil
+    TMP_DB = Path('/tmp') / 'db.sqlite3'
+    if not TMP_DB.exists() and DB_FILE.exists():
+        try:
+            shutil.copyfile(DB_FILE, TMP_DB)
+        except Exception:
+            pass
+    DB_NAME = TMP_DB if TMP_DB.exists() else DB_FILE
+else:
+    DB_NAME = DB_FILE
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': DB_NAME,
         'OPTIONS': {
             'timeout': 20,
         }
